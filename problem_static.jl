@@ -19,7 +19,7 @@ m = Model(CPLEX.Optimizer)
 
 @variable(m, x[1:n, 1:n], Bin)
 
-@variable(m, u[2:n] >= 0, Int)
+@variable(m, u[1:n] >= 0, Int)
 
 ### Fonction objectif
 

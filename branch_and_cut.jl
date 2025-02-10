@@ -111,8 +111,8 @@ end
 function isIntegerPoint(cb_data::CPLEX.CallbackContext, context_id::Clong)
     # context_id == CPX_CALLBACKCONTEXT_CANDIDATE si le callback est
     # appelé dans un des deux cas suivants :
-    # cas 1- une solution entière a été obtenue; ou
-    # cas 2- une relaxation non bornée a été obtenue
+    # cas 1 - une solution entière a été obtenue; ou
+    # cas 2 - une relaxation non bornée a été obtenue
     if context_id != CPX_CALLBACKCONTEXT_CANDIDATE
         return false
     end

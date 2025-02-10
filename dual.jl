@@ -1,7 +1,7 @@
 using JuMP
 using CPLEX
 
-path = "data/n_6-euclidean_true"
+path = "data/n_100-euclidean_true"
 
 include(path)
 
