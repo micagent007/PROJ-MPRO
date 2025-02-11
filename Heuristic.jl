@@ -3,7 +3,6 @@ using CPLEX
 
 include("coupes.jl")
 
-
 function Heuristic(path="data/instance_n5.txt", alpha = 1, beta = 1)
     include(path)
 
@@ -53,11 +52,77 @@ function Heuristic(path="data/instance_n5.txt", alpha = 1, beta = 1)
         X[current_node, 1] = 1
     end
 
-
     println("Optimized tour matrix X:")
     println(X)
 
-    H_value = solve_subproblem(X, n, t, th)
+    _, _, H_value = solve_subproblem(X, n, t, th)
 
     return time(), H_value
+end
+
+function cross_validate()
+    alpha_values = [0.1, 0.5, 1, 2, 5, 10, 50]
+    beta_values = [0.1, 0.5, 1, 2, 5, 50, 200, 500, 1000]
+    optimal_values = Dict("n_5-euclidean_false" => 2786, "n_6-euclidean_false" => 3307, "n_7-euclidean_false" => 2066, 
+                          "n_8-euclidean_false" => 3270, "n_9-euclidean_false" => 3113, "n_10-euclidean_false" => 2684, 
+                          "n_6-euclidean_true" => 3087, "n_7-euclidean_true" => 3132, "n_8-euclidean_true" => 3776, 
+                          "n_9-euclidean_true" => 4181, "n_10-euclidean_true" => 5423)
+    
+    best_alpha, best_beta = 1, 1
+    min_avg_gap = Inf
+
+    for alpha in alpha_values
+        for beta in beta_values
+            total_gap = 0
+            count = 0
+            
+            for (instance, optimal) in optimal_values
+                _, heuristic_value = Heuristic("data/$(instance)", alpha, beta)
+                gap = (heuristic_value - optimal) / optimal * 100
+                total_gap += gap
+                count += 1
+            end
+            
+            avg_gap = total_gap / count
+            if avg_gap < min_avg_gap
+                min_avg_gap = avg_gap
+                best_alpha, best_beta = alpha, beta
+            end
+        end
+    end
+
+    println("Best alpha: ", best_alpha, ", Best beta: ", best_beta)
+    println("Minimum average gap: ", min_avg_gap)
+end
+
+function cross_validate_max_gap()
+    alpha_values = [0.1, 0.5, 1, 2, 5, 10, 50]
+    beta_values = [0.1, 0.5, 1, 2, 5, 50, 200, 500, 1000]
+    optimal_values = Dict("n_5-euclidean_false" => 2786, "n_6-euclidean_false" => 3307, "n_7-euclidean_false" => 2066, 
+                          "n_8-euclidean_false" => 3270, "n_9-euclidean_false" => 3113, "n_10-euclidean_false" => 2684, 
+                          "n_6-euclidean_true" => 3087, "n_7-euclidean_true" => 3132, "n_8-euclidean_true" => 3776, 
+                          "n_9-euclidean_true" => 4181, "n_10-euclidean_true" => 5423)
+    
+    best_alpha, best_beta = 1, 1
+    min_max_gap = Inf
+
+    for alpha in alpha_values
+        for beta in beta_values
+            max_gap = -Inf
+            
+            for (instance, optimal) in optimal_values
+                _, heuristic_value = Heuristic("data/$(instance)", alpha, beta)
+                gap = (heuristic_value - optimal) / optimal * 100
+                max_gap = max(max_gap, gap)
+            end
+            
+            if max_gap < min_max_gap
+                min_max_gap = max_gap
+                best_alpha, best_beta = alpha, beta
+            end
+        end
+    end
+
+    println("Best alpha: ", best_alpha, ", Best beta: ", best_beta)
+    println("Minimum maximum gap: ", min_max_gap)
 end
