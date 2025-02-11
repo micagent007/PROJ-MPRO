@@ -2,10 +2,13 @@ using JuMP
 using CPLEX
 
 # Données de l'instance
-include("data/instance_n5.txt")
+
 
 # Fonction pour résoudre le problème avec callbacks
-function solve_vrp_with_callbacks()
+function solve_vrp_with_callbacks(path="data/n_6-euclidean_false")
+
+    include(path)
+
     model = Model(CPLEX.Optimizer)
     MOI.set(model, MOI.NumberOfThreads(), 1)  # Limite à un seul thread pour le callback
 
@@ -56,17 +59,12 @@ function solve_vrp_with_callbacks()
 
             # Charger les valeurs des variables de la relaxation
             CPLEX.load_callback_variable_primal(cb_data, context_id)
-            x_vals = [callback_value(cb_data, x[i, j]) for i in 1:n, j in 1:n]
+            x_vals = callback_value.(cb_data, x)
 
             # Résolution du sous-problème pour générer un scénario adverse
             model_sp = Model(CPLEX.Optimizer)
-            @variable(model_sp, δ1[1:n, 1:n] >= 0)
-            @variable(model_sp, δ2[1:n, 1:n] >= 0)
-
-            for i in 1:n, j in 1:n
-                @constraint(model_sp, δ1[i, j] <= 1)
-                @constraint(model_sp, δ2[i, j] <= 2)
-            end
+            @variable(model_sp, 0 <= δ1[1:n, 1:n] <= 1)
+            @variable(model_sp, 0 <= δ2[1:n, 1:n] <= 2)
 
             @constraint(model_sp, sum(δ1[i, j] for i in 1:n, j in 1:n if i != j) <= T)
             @constraint(model_sp, sum(δ2[i, j] for i in 1:n, j in 1:n if i != j) <= T^2)
@@ -83,8 +81,8 @@ function solve_vrp_with_callbacks()
             # Ajout de la coupe si nécessaire
             z_val = callback_value(cb_data, z)
             println("value courante :", z_val)
-            if z_val < worst_case_cost
-                cstr = @build_constraint(z >= worst_case_cost)
+            if z_val < worst_case_cost - 1e-4
+                cstr = @build_constraint(z >= sum((t[i, j] + δ1_vals[i, j] * (th[i] + th[j]) + δ2_vals[i, j] * th[i] * th[j]) * x[i, j] for i in 1:n, j in 1:n if i != j))
                 MOI.submit(model, MOI.LazyConstraint(cb_data), cstr)
                 println("Ajout d'une coupe robuste avec coût ", worst_case_cost)
             end
@@ -105,6 +103,9 @@ function solve_vrp_with_callbacks()
     else
         println("Solution non optimale trouvée.")
     end
+
+    return time(), JuMP.objective_value(model)
+
 end
 
 
