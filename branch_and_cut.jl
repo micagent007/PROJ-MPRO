@@ -5,6 +5,8 @@ using CPLEX
 function solve_vrp_with_callbacks(path="data/n_6-euclidean_false", max_runtime=60.0)
     include(path)
 
+    start_time = time()
+
     model = Model(CPLEX.Optimizer)
     MOI.set(model, MOI.NumberOfThreads(), 1)  # Limite à un seul thread pour le callback
     set_optimizer_attribute(model, "CPXPARAM_TimeLimit", max_runtime)  # Définir la limite de temps
@@ -38,6 +40,12 @@ function solve_vrp_with_callbacks(path="data/n_6-euclidean_false", max_runtime=6
             x_vals = callback_value.(cb_data, x)
 
             model_sp = Model(CPLEX.Optimizer)
+
+            set_optimizer_attribute(model, "CPXPARAM_Preprocessing_Presolve", 0)
+            set_optimizer_attribute(model, "CPXPARAM_MIP_Limits_CutsFactor", 0)
+            set_optimizer_attribute(model, "CPXPARAM_MIP_Strategy_FPHeur", -1)
+            set_optimizer_attribute(model_sp, "CPX_PARAM_SCRIND", 0)
+
             @variable(model_sp, 0 <= δ1[1:n, 1:n] <= 1)
             @variable(model_sp, 0 <= δ2[1:n, 1:n] <= 2)
 
@@ -85,5 +93,6 @@ function isIntegerPoint(cb_data::CPLEX.CallbackContext, context_id::Clong)
     return ret == 0 && ispoint_p[] == 1
 end
 
-# Lancer la résolution avec une limite de temps
-solve_vrp_with_callbacks("data/n_6-euclidean_false", 300.0)
+
+# # Lancer la résolution
+# solve_vrp_with_callbacks()
