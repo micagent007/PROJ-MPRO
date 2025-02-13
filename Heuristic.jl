@@ -3,8 +3,9 @@ using CPLEX
 
 include("coupes.jl")
 
-function Heuristic(path="data/instance_n5.txt", alpha = 1, beta = 1)
+function Heuristic(path="data/instance_n5.txt", max_runtime = 60, alpha = 0.5, beta = 2)
     include(path)
+    start_time = time()
 
     # Initialize the solution matrix X
     X = zeros(Int, n, n)
@@ -52,12 +53,13 @@ function Heuristic(path="data/instance_n5.txt", alpha = 1, beta = 1)
         X[current_node, 1] = 1
     end
 
-    println("Optimized tour matrix X:")
-    println(X)
 
-    _, _, H_value = solve_subproblem(X, n, t, th)
+    _, _, H_value = solve_subproblem(X, n, t, th, T, max_runtime)
 
-    return time(), H_value
+    end_time = time()
+    exec_time = end_time - start_time
+    
+    return end_time, H_value, X, exec_time
 end
 
 function cross_validate()

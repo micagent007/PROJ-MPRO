@@ -1,63 +1,52 @@
 using JuMP
 using CPLEX
 
-
-function Static_problem(path="data/instance_n5.txt")
-
+function Static_problem(path="data/instance_n5.txt", max_runtime=60.0)
     include(path)
 
-    """println("n = ", n)
-    println("t = ", t)
-    println("th = ", th)
-    println("T = ", T)
-    println("d = ", d)
-    println("C = ", C)"""
-
-
     m = Model(CPLEX.Optimizer)
+    set_silent(m)
+
+    # Définir la limite de temps
+    set_optimizer_attribute(m, "CPX_PARAM_TILIM", max_runtime)
 
     ### Variables de décision
-
     @variable(m, x[1:n, 1:n], Bin)
-
     @variable(m, u[1:n] >= 0, Int)
 
     ### Fonction objectif
-
     @objective(m, Min, sum(t[i, j] * x[i, j] for i in 1:n, j in 1:n if j != i))
 
     ### Contraintes
-
-    # 1 véhicule atteint le client i
     @constraint(m, [i in 2:n], sum(x[j, i] for j in 1:n if j != i) == 1)
-
-    # 1 véhicule quitte le client i
     @constraint(m, [i in 2:n], sum(x[i, j] for j in 1:n if j != i) == 1)
-
-    # Autant de véhicules quittent et atteignent l'entrepôt
     @constraint(m, sum(x[1, j] for j in 2:n) == sum(x[j, 1] for j in 2:n))
-
-    # En arrivant en i le véhicule doit contenir suffisamment 
-    # de vaccins pour satisfaire la demande de i
     @constraint(m, [i in 2:n], u[i] <= C - d[i])
-
-    # Si i est le prédécesseur de j, au moins d_i vaccins
-    # de plus ont été livrés en arrivant en j qu'en i
     @constraint(m, [i in 2:n, j in 2:n; (i != j)], u[j] - u[i] >= d[i] - C * (1 - x[i, j]))
-
-    # Si i est le premier client de la tournée, aucun
-    # vaccin n'a été livré en y arrivant
     @constraint(m, [j in 2:n], u[j] <= C * (1 - x[1, j]))
 
+    start_time = time()
     optimize!(m)
+    end_time = time()
+    exec_time = end_time - start_time
 
-    if primal_status(m) == MOI.FEASIBLE_POINT
-        vX = JuMP.value.(x)
-        vU = JuMP.value.(u)
-        println("x = ", vX)
-        println("u = ", vU)
-        println("Valeur de l'objectif : ", JuMP.objective_value(m))
+    best_obj = nothing
+    best_x = nothing
+    best_u = nothing
+
+    if has_values(m)
+        best_obj = objective_value(m)
+        best_x = value.(x)
+        best_u = value.(u)
+        #println("Solution trouvée en ", max_runtime, " secondes.")
+        #println("x = ", best_x)
+        #println("u = ", best_u)
+        println("Valeur de l'objectif : ", best_obj)
+    else
+        best_obj = "Inf"
+        best_x = "Pas de solution trouvée"
+        println("Aucune solution trouvée dans le temps imparti.")
     end
 
-    return time(), JuMP.objective_value(m)
+    return end_time, best_obj, best_x, exec_time
 end
