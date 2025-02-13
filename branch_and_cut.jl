@@ -5,9 +5,11 @@ using CPLEX
 
 
 # Fonction pour résoudre le problème avec callbacks
-function solve_vrp_with_callbacks(path="data/n_6-euclidean_false")
+function solve_vrp_with_callbacks(path="data/n_20-euclidean_false", timeout=10)
 
     include(path)
+
+    start_time = time()
 
     model = Model(CPLEX.Optimizer)
     MOI.set(model, MOI.NumberOfThreads(), 1)  # Limite à un seul thread pour le callback
@@ -15,7 +17,8 @@ function solve_vrp_with_callbacks(path="data/n_6-euclidean_false")
     # Désactiver certaines options de CPLEX pour éviter les optimisations automatiques
     set_optimizer_attribute(model, "CPXPARAM_Preprocessing_Presolve", 0)
     set_optimizer_attribute(model, "CPXPARAM_MIP_Limits_CutsFactor", 0)
-    #set_optimizer_attribute(model, "CPXPARAM_MIP_Strategy_FPHeur", -1)
+    set_optimizer_attribute(model, "CPXPARAM_MIP_Strategy_FPHeur", -1)
+    set_optimizer_attribute(model, "CPX_PARAM_TILIM", timeout)
 
     # Déclaration des variables
     @variable(model, x[1:n, 1:n], Bin)
@@ -54,7 +57,7 @@ function solve_vrp_with_callbacks(path="data/n_6-euclidean_false")
 
     # Callback pour ajouter les coupes robustes
     function robust_cut_callback(cb_data, context_id)
-        println("//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////")
+        # println("//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////")
         if isIntegerPoint(cb_data, context_id)
 
             # Charger les valeurs des variables de la relaxation
@@ -63,6 +66,12 @@ function solve_vrp_with_callbacks(path="data/n_6-euclidean_false")
 
             # Résolution du sous-problème pour générer un scénario adverse
             model_sp = Model(CPLEX.Optimizer)
+
+            set_optimizer_attribute(model, "CPXPARAM_Preprocessing_Presolve", 0)
+            set_optimizer_attribute(model, "CPXPARAM_MIP_Limits_CutsFactor", 0)
+            set_optimizer_attribute(model, "CPXPARAM_MIP_Strategy_FPHeur", -1)
+            set_optimizer_attribute(model_sp, "CPX_PARAM_SCRIND", 0)
+
             @variable(model_sp, 0 <= δ1[1:n, 1:n] <= 1)
             @variable(model_sp, 0 <= δ2[1:n, 1:n] <= 2)
 
@@ -76,15 +85,15 @@ function solve_vrp_with_callbacks(path="data/n_6-euclidean_false")
             δ1_vals = value.(δ1)
             δ2_vals = value.(δ2)
             worst_case_cost = objective_value(model_sp)
-            println("value pb slave :", worst_case_cost)
+            # println("value pb slave :", worst_case_cost)
 
             # Ajout de la coupe si nécessaire
             z_val = callback_value(cb_data, z)
-            println("value courante :", z_val)
+            # println("value courante :", z_val)
             if z_val < worst_case_cost - 1e-4
                 cstr = @build_constraint(z >= sum((t[i, j] + δ1_vals[i, j] * (th[i] + th[j]) + δ2_vals[i, j] * th[i] * th[j]) * x[i, j] for i in 1:n, j in 1:n if i != j))
                 MOI.submit(model, MOI.LazyConstraint(cb_data), cstr)
-                println("Ajout d'une coupe robuste avec coût ", worst_case_cost)
+                # println("Ajout d'une coupe robuste avec coût ", worst_case_cost)
             end
         end
     end
@@ -95,16 +104,20 @@ function solve_vrp_with_callbacks(path="data/n_6-euclidean_false")
     # Résolution du modèle
     optimize!(model)
 
+    if primal_status(model) == MOI.FEASIBLE_POINT
+        println("Solution trouvée dans le temps imparti : ", objective_value(model))
+    end
+
     # Affichage des résultats
     if termination_status(model) == MOI.OPTIMAL
         println("Solution optimale trouvée avec coût : ", objective_value(model))
-        println("value de x :", value.(x))
-        println("value de u :", value.(u))
+        # println("value de x :", value.(x))
+        # println("value de u :", value.(u))
     else
-        println("Solution non optimale trouvée.")
+        # println("Solution non optimale trouvée.")
     end
 
-    return time(), JuMP.objective_value(model)
+    return JuMP.value.(x), JuMP.objective_value(model), JuMP.objective_bound(model), time() - start_time
 
 end
 
@@ -130,5 +143,5 @@ function isIntegerPoint(cb_data::CPLEX.CallbackContext, context_id::Clong)
 end
 
 
-# Lancer la résolution
-solve_vrp_with_callbacks()
+# # Lancer la résolution
+# solve_vrp_with_callbacks()

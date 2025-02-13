@@ -2,9 +2,11 @@ using JuMP
 using CPLEX
 
 
-function Static_problem(path="data/instance_n5.txt")
+function Static_problem(path="data/n_5-euclidean_false", timeout=10)
 
     include(path)
+
+    start_time = time()
 
     """println("n = ", n)
     println("t = ", t)
@@ -15,6 +17,11 @@ function Static_problem(path="data/instance_n5.txt")
 
 
     m = Model(CPLEX.Optimizer)
+
+    set_optimizer_attribute(m, "CPXPARAM_Preprocessing_Presolve", 0)
+    set_optimizer_attribute(m, "CPXPARAM_MIP_Limits_CutsFactor", 0)
+    set_optimizer_attribute(m, "CPXPARAM_MIP_Strategy_FPHeur", -1)
+    set_optimizer_attribute(m, "CPX_PARAM_TILIM", timeout)
 
     ### Variables de décision
 
@@ -51,13 +58,15 @@ function Static_problem(path="data/instance_n5.txt")
 
     optimize!(m)
 
-    if primal_status(m) == MOI.FEASIBLE_POINT
-        vX = JuMP.value.(x)
-        vU = JuMP.value.(u)
-        println("x = ", vX)
-        println("u = ", vU)
-        println("Valeur de l'objectif : ", JuMP.objective_value(m))
-    end
+    # if primal_status(m) == MOI.FEASIBLE_POINT
+    #     vX = JuMP.value.(x)
+    #     vU = JuMP.value.(u)
+    #     println("x = ", vX)
+    #     println("u = ", vU)
+    #     println("Valeur de l'objectif : ", JuMP.objective_value(m))
+    # end
 
-    return time(), JuMP.objective_value(m)
+    return JuMP.value.(x), JuMP.objective_value(m), JuMP.objective_bound(m), time() - start_time
 end
+
+Static_problem()

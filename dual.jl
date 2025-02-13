@@ -2,8 +2,11 @@ using JuMP
 using CPLEX
 
 
-function Dual_solve(path="data/instance_n5.txt")
+function Dual_solve(path="data/instance_n5.txt", timeout=10)
+
     include(path)
+
+    start_time = time()
 
     """println("n = ", n)
     println("t = ", t)
@@ -12,21 +15,20 @@ function Dual_solve(path="data/instance_n5.txt")
     println("d = ", d)
     println("C = ", C)"""
 
-
     m = Model(CPLEX.Optimizer)
+
+    set_optimizer_attribute(m, "CPXPARAM_Preprocessing_Presolve", 0)
+    set_optimizer_attribute(m, "CPXPARAM_MIP_Limits_CutsFactor", 0)
+    set_optimizer_attribute(m, "CPXPARAM_MIP_Strategy_FPHeur", -1)
+    set_optimizer_attribute(m, "CPX_PARAM_TILIM", timeout)
 
     ### Variables de décision
 
     @variable(m, x[1:n, 1:n], Bin)
-
     @variable(m, u[2:n] >= 0, Int)
-
     @variable(m, alpha1 >= 0)
-
     @variable(m, alpha2 >= 0)
-
     @variable(m, beta1[1:n, 1:n] >= 0)
-
     @variable(m, beta2[1:n, 1:n] >= 0)
 
     ### Fonction objectif
@@ -67,13 +69,13 @@ function Dual_solve(path="data/instance_n5.txt")
 
     optimize!(m)
 
-    if primal_status(m) == MOI.FEASIBLE_POINT
-        vX = JuMP.value.(x)
-        vU = JuMP.value.(u)
-        println("x = ", vX)
-        println("u = ", vU)
-        println("Valeur de l'objectif : ", JuMP.objective_value(m))
-    end
+    # if primal_status(m) == MOI.FEASIBLE_POINT
+    #     vX = JuMP.value.(x)
+    #     vU = JuMP.value.(u)
+    #     println("x = ", vX)
+    #     println("u = ", vU)
+    #     println("Valeur de l'objectif : ", JuMP.objective_value(m))
+    # end
 
-    return time(), JuMP.objective_value(m)
+    return JuMP.value.(x), JuMP.objective_value(m), JuMP.objective_bound(m), time() - start_time
 end

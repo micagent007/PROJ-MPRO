@@ -2,7 +2,7 @@ using JuMP
 using CPLEX
 
 # Charger les données depuis le fichier instance_n5.txt
-include("data/instance_n5.txt")
+# include("data/instance_n5.txt")
 
 
 function solve_main_problem(nb_nodes::Int, time_matrix::Matrix{Int64}, node_weights::Vector{Int64}, max_time::Int64, demand::Vector{Int64}, capacity::Int64, delta1_list, delta2_list, cost_list)
