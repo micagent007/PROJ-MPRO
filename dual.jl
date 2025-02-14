@@ -11,7 +11,7 @@ function Dual_solve(path="data/instance_n5.txt", max_runtime=60.0)
     set_optimizer_attribute(m, "CPXPARAM_Preprocessing_Presolve", 0)
     set_optimizer_attribute(m, "CPXPARAM_MIP_Limits_CutsFactor", 0)
     set_optimizer_attribute(m, "CPXPARAM_MIP_Strategy_FPHeur", -1)
-    set_optimizer_attribute(m, "CPX_PARAM_TILIM", timeout)
+    set_optimizer_attribute(m, "CPX_PARAM_TILIM", max_runtime)
 
     ### Variables de décision
     @variable(m, x[1:n, 1:n], Bin)

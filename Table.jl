@@ -28,21 +28,21 @@ for instance in ProgressBar(instances)
     path = joinpath(directory, instance)
     println("Résolution de l'instance : ", instance)
 
-    _, cp_best, cp_sol, cp_time = Cutting_planes(path, max_runtime)
-    _, bc_best, bc_sol, bc_time = solve_vrp_with_callbacks(path, max_runtime)
-    _, dual_best, dual_sol, dual_time = Dual_solve(path, max_runtime)
-    _, heur_best, heur_sol, heur_time = Heuristic(path, max_runtime)
-    _, static_best, static_sol, static_time = Static_problem(path, max_runtime)
+    #_, cp_best, cp_sol, cp_time = Cutting_planes(path, max_runtime)
+    #_, bc_best, bc_sol, bc_time = solve_vrp_with_callbacks(path, max_runtime)
+    #_, dual_best, dual_sol, dual_time = Dual_solve(path, max_runtime)
+    _, heur_best, heur_sol, heur_time = Heuristic(path, max_runtime, 0.1, 1, 5)
+    #_, static_best, static_sol, static_time = Static_problem(path, max_runtime)
 
     # Stockage des résultats dans le dictionnaire
-    push!(results["Cutting Planes"], "$instance : $cp_sol")
-    push!(results["Branch & Cut"], "$instance : $bc_sol")
-    push!(results["Dual"], "$instance : $dual_sol")
+    #push!(results["Cutting Planes"], "$instance : $cp_sol")
+    #push!(results["Branch & Cut"], "$instance : $bc_sol")
+    #push!(results["Dual"], "$instance : $dual_sol")
     push!(results["Heuristic"], "$instance : $heur_sol")
-    push!(results["Static"], "$instance : $static_sol")
+    #push!(results["Static"], "$instance : $static_sol")
 
     #Calcul de la meilleure sol robuste
-    Best_list = [cp_best, dual_best, bc_best, Inf]
+    """Best_list = [cp_best, dual_best, bc_best, Inf]
     true_list = []
     for sol in Best_list
         if typeof(sol) != String
@@ -53,11 +53,9 @@ for instance in ProgressBar(instances)
     best_sol = minimum(true_list)
 
     # Calcul du gap
-    gap = static_best != 0 ? ((best_sol - static_best) / static_best) * 100 : Inf
+    gap = static_best != 0 ? ((best_sol - static_best) / static_best) * 100 : Inf"""
 
-    push!(data, (instance=instance, cp_time=cp_time, cp_best=cp_best, bc_time=bc_time, bc_best=bc_best,
-        dual_time=dual_time, dual_best=dual_best, heur_time=heur_time, heur_best=heur_best,
-        static_best=static_best, gap=gap))
+    push!(data, (instance=instance, heur_time=heur_time, heur_best=heur_best))
 end
 
 # Écriture des fichiers texte

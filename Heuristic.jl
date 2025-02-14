@@ -3,7 +3,7 @@ using CPLEX
 
 include("coupes.jl")
 
-function Heuristic(path="data/instance_n5.txt", max_runtime = 60, alpha = 0.5, beta = 2)
+function Heuristic(path="data/instance_n5.txt", max_runtime = 60, alpha = 0.5, beta = 2, gamma = 1)
     include(path)
     start_time = time()
 
@@ -15,7 +15,7 @@ function Heuristic(path="data/instance_n5.txt", max_runtime = 60, alpha = 0.5, b
     for i in 1:n
         for j in 1:n
             if i != j
-                reward[i, j] = d[j] / (alpha * t[i, j] + beta * th[j] + 1e-6)  # Avoid division by zero
+                reward[i, j] = d[j] / (alpha * t[i, j] + beta * th[j] * th[j] + gamma*(th[i] + th[j]) + 1e-6)  # Avoid division by zero
             end
         end
     end
@@ -127,4 +127,42 @@ function cross_validate_max_gap()
 
     println("Best alpha: ", best_alpha, ", Best beta: ", best_beta)
     println("Minimum maximum gap: ", min_max_gap)
+end
+
+function cross_validate_new_version()
+    alpha_values = [0.1, 0.5, 1, 2, 5, 10, 50]
+    beta_values = [0.1, 0.5, 1, 2, 5, 50, 200, 500, 1000]
+    gamma_values = [0.1, 0.5, 1, 2, 5, 50, 200, 500, 1000]
+    optimal_values = Dict("n_5-euclidean_false" => 2786, "n_6-euclidean_false" => 3307, "n_7-euclidean_false" => 2066, 
+                          "n_8-euclidean_false" => 3270, "n_9-euclidean_false" => 3113, "n_10-euclidean_false" => 2684, 
+                          "n_6-euclidean_true" => 3087, "n_7-euclidean_true" => 3132, "n_8-euclidean_true" => 3776, 
+                          "n_9-euclidean_true" => 4181, "n_10-euclidean_true" => 5423)
+    
+    best_alpha, best_beta, best_gamma = 1, 1, 1
+    min_avg_gap = Inf
+
+    for alpha in alpha_values
+        for beta in beta_values
+            for gamma in gamma_values
+                total_gap = 0
+                count = 0
+            
+                for (instance, optimal) in optimal_values
+                    _, heuristic_value = Heuristic("data/$(instance)", alpha, beta, gamma)
+                    gap = (heuristic_value - optimal) / optimal * 100
+                    total_gap += gap
+                    count += 1
+                end
+            
+                avg_gap = total_gap / count
+                if avg_gap < min_avg_gap
+                    min_avg_gap = avg_gap
+                    best_alpha, best_beta, best_gamma = alpha, beta, gamma
+                end
+            end
+        end
+    end
+
+    println("Best alpha: ", best_alpha, ", Best beta: ", best_beta, ", Best gamma: ", best_gamma)
+    println("Minimum average gap: ", min_avg_gap)
 end
